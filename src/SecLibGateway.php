@@ -106,20 +106,6 @@ class SecLibGateway implements GatewayInterface
     }
 
     /**
-     * Get the underlying SFTP connection.
-     *
-     * @return \phpseclib\Net\SFTP
-     */
-    public function getConnection()
-    {
-        if ($this->connection) {
-            return $this->connection;
-        }
-
-        return $this->connection = new SFTP($this->host, $this->port, $this->timeout);
-    }
-
-    /**
      * /**
      * Get the authentication object for login.
      *
@@ -319,10 +305,6 @@ class SecLibGateway implements GatewayInterface
      *
      * @return void
      */
-    public function put($local, $remote)
-    {
-        $this->getConnection()->put($remote, $local, SFTP::SOURCE_LOCAL_FILE);
-    }
 
     /**
      * Upload a string to to the given file on the server.

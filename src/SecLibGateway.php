@@ -2,7 +2,6 @@
 
 namespace Collective\Remote;
 
-use phpseclib\Net\SFTP;
 use phpseclib\Net\SSH2;
 use phpseclib\Crypt\RSA;
 use Illuminate\Support\Arr;

@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Filesystem\Filesystem;
 use InvalidArgumentException;
 use RuntimeException;
+use BadMethodCallException;
 
 class SecLibGateway implements GatewayInterface
 {
@@ -187,68 +188,13 @@ class SecLibGateway implements GatewayInterface
     }
 
     /**
-     * Create a new RSA key instance.
+     * Get timeout.
      *
-     * @param array $auth
-     *
-     * @return \phpseclib\Crypt\RSA
+     * @return int
      */
-    protected function getKey(array $auth)
+    public function getTimeout()
     {
-        $key = $this->getNewKey();
-        $key->setPassword(Arr::get($auth, 'keyphrase'));
-
-        return $key;
-    }
-
-    /**
-     * Get a new RSA key instance.
-     *
-     * @return \phpseclib\Crypt\RSA
-     */
-    public function getNewKey()
-    {
-        return new RSA();
-    }
-
-    /**
-     * Read the contents of the RSA key.
-     *
-     * @param array $auth
-     *
-     * @return string
-     */
-    protected function readRsaKey(array $auth)
-    {
-        if (isset($auth['key'])) {
-            return $this->files->get($auth['key']);
-        }
-
-        return $auth['keytext'];
-    }
-
-    /**
-     * Set timeout.
-     *
-     * @param int $timeout
-     */
-    public function setTimeout($timeout)
-    {
-        $this->timeout = (int) $timeout;
-
-        if ($this->connection) {
-            $this->connection->setTimeout($this->timeout);
-        }
-    }
-
-    /**
-     * Determine if the gateway is connected.
-     *
-     * @return bool
-     */
-    public function connected()
-    {
-        return $this->getConnection()->isConnected();
+        return $this->timeout;
     }
 
     /**
@@ -261,18 +207,6 @@ class SecLibGateway implements GatewayInterface
     public function run($command)
     {
         $this->getConnection()->exec($command, false);
-    }
-
-    /**
-     * Get the next line of output from the server.
-     *
-     * @return string|null
-     */
-    public function nextLine()
-    {
-        $value = $this->getConnection()->_get_channel_packet(SSH2::CHANNEL_EXEC);
-
-        return $value === true ? null : $value;
     }
 
     /**
@@ -303,5 +237,44 @@ class SecLibGateway implements GatewayInterface
     public function getPort()
     {
         return $this->port;
+    }
+
+    /**
+     * Implement missing methods from GatewayInterface but disable SFTP.
+     */
+    
+    public function get($remote, $local)
+    {
+        throw new BadMethodCallException('File download (get) is not supported in SSH mode.');
+    }
+
+    public function getString($remote)
+    {
+        throw new BadMethodCallException('File retrieval (getString) is not supported in SSH mode.');
+    }
+
+    public function put($local, $remote)
+    {
+        throw new BadMethodCallException('File upload (put) is not supported in SSH mode.');
+    }
+
+    public function putString($remote, $contents)
+    {
+        throw new BadMethodCallException('String upload (putString) is not supported in SSH mode.');
+    }
+
+    public function exists($remote)
+    {
+        throw new BadMethodCallException('File existence check (exists) is not supported in SSH mode.');
+    }
+
+    public function rename($remote, $newRemote)
+    {
+        throw new BadMethodCallException('File renaming (rename) is not supported in SSH mode.');
+    }
+
+    public function delete($remote)
+    {
+        throw new BadMethodCallException('File deletion (delete) is not supported in SSH mode.');
     }
 }

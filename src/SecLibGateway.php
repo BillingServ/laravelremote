@@ -67,7 +67,7 @@ class SecLibGateway implements GatewayInterface
      * @return void
      * @throws RuntimeException
      */
-    protected function connect()
+    public function connect()
     {
         $this->connection = new SSH2($this->host, $this->port);
 

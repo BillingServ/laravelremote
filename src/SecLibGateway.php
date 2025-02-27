@@ -4,13 +4,10 @@ namespace Collective\Remote;
 
 use phpseclib\Net\SSH2;
 use phpseclib\Crypt\RSA;
-use phpseclib\System\SSH\Agent;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use phpseclib\System\SSH\Agent;
 use Illuminate\Filesystem\Filesystem;
-use InvalidArgumentException;
-use RuntimeException;
-use BadMethodCallException;
 
 class SecLibGateway implements GatewayInterface
 {
@@ -50,7 +47,7 @@ class SecLibGateway implements GatewayInterface
     protected $files;
 
     /**
-     * The SecLib SSH connection instance.
+     * The SecLib connection instance.
      *
      * @var \phpseclib\Net\SSH2
      */
@@ -62,9 +59,9 @@ class SecLibGateway implements GatewayInterface
      * @param string                            $host
      * @param array                             $auth
      * @param \Illuminate\Filesystem\Filesystem $files
-     * @param int                               $timeout
+     * @param                                   $timeout
      */
-    public function __construct($host, array $auth, Filesystem $files, $timeout = 10)
+    public function __construct($host, array $auth, Filesystem $files, $timeout)
     {
         $this->auth = $auth;
         $this->files = $files;
@@ -109,7 +106,7 @@ class SecLibGateway implements GatewayInterface
     }
 
     /**
-     * Get the underlying SSH connection.
+     * Get the underlying SSH2 connection.
      *
      * @return \phpseclib\Net\SSH2
      */
@@ -127,7 +124,7 @@ class SecLibGateway implements GatewayInterface
      *
      * @throws \InvalidArgumentException
      *
-     * @return \phpseclib\Crypt\RSA|\phpseclib\System\SSH\Agent|string
+     * @return \Crypt_RSA|\System_SSH_Agent|string
      */
     protected function getAuthForLogin()
     {
@@ -139,7 +136,7 @@ class SecLibGateway implements GatewayInterface
             return $this->auth['password'];
         }
 
-        throw new InvalidArgumentException('Password / key is required.');
+        throw new \InvalidArgumentException('Password / key is required.');
     }
 
     /**
@@ -169,7 +166,8 @@ class SecLibGateway implements GatewayInterface
      */
     protected function hasRsaKey()
     {
-        return !empty($this->auth['key']) || !empty($this->auth['keytext']);
+        $hasKey = (isset($this->auth['key']) && trim($this->auth['key']) != '');
+        return $hasKey || (isset($this->auth['keytext']) && trim($this->auth['keytext']) != '');
     }
 
     /**
@@ -177,14 +175,53 @@ class SecLibGateway implements GatewayInterface
      *
      * @param array $auth
      *
-     * @return \phpseclib\Crypt\RSA
+     * @return \Crypt_RSA
      */
     protected function loadRsaKey(array $auth)
     {
-        $key = $this->getNewKey();
-        $key->loadKey($this->readRsaKey($auth));
+        with($key = $this->getKey($auth))->loadKey($this->readRsaKey($auth));
 
         return $key;
+    }
+
+    /**
+     * Create a new RSA key instance.
+     *
+     * @param array $auth
+     *
+     * @return \Crypt_RSA
+     */
+    protected function getKey(array $auth)
+    {
+        with($key = $this->getNewKey())->setPassword(Arr::get($auth, 'keyphrase'));
+
+        return $key;
+    }
+
+    /**
+     * Get a new RSA key instance.
+     *
+     * @return \phpseclib\Crypt\RSA
+     */
+    public function getNewKey()
+    {
+        return new RSA();
+    }
+
+    /**
+     * Read the contents of the RSA key.
+     *
+     * @param array $auth
+     *
+     * @return string
+     */
+    protected function readRsaKey(array $auth)
+    {
+        if (isset($auth['key'])) {
+            return $this->files->get($auth['key']);
+        }
+
+        return $auth['keytext'];
     }
 
     /**
@@ -198,6 +235,32 @@ class SecLibGateway implements GatewayInterface
     }
 
     /**
+     * Set timeout.
+     *
+     * Setting $timeout to false or 0 will mean there is no timeout.
+     *
+     * @param int $timeout
+     */
+    public function setTimeout($timeout)
+    {
+        $this->timeout = (int) $timeout;
+
+        if ($this->connection) {
+            $this->connection->setTimeout($this->timeout);
+        }
+    }
+
+    /**
+     * Determine if the gateway is connected.
+     *
+     * @return bool
+     */
+    public function connected()
+    {
+        return $this->getConnection()->isConnected();
+    }
+
+    /**
      * Run a command against the server (non-blocking).
      *
      * @param string $command
@@ -207,6 +270,18 @@ class SecLibGateway implements GatewayInterface
     public function run($command)
     {
         $this->getConnection()->exec($command, false);
+    }
+
+    /**
+     * Get the next line of output from the server.
+     *
+     * @return string|null
+     */
+    public function nextLine()
+    {
+        $value = $this->getConnection()->_get_channel_packet(SSH2::CHANNEL_EXEC);
+
+        return $value === true ? null : $value;
     }
 
     /**
@@ -237,44 +312,5 @@ class SecLibGateway implements GatewayInterface
     public function getPort()
     {
         return $this->port;
-    }
-
-    /**
-     * Implement missing methods from GatewayInterface but disable SFTP.
-     */
-    
-    public function get($remote, $local)
-    {
-        throw new BadMethodCallException('File download (get) is not supported in SSH mode.');
-    }
-
-    public function getString($remote)
-    {
-        throw new BadMethodCallException('File retrieval (getString) is not supported in SSH mode.');
-    }
-
-    public function put($local, $remote)
-    {
-        throw new BadMethodCallException('File upload (put) is not supported in SSH mode.');
-    }
-
-    public function putString($remote, $contents)
-    {
-        throw new BadMethodCallException('String upload (putString) is not supported in SSH mode.');
-    }
-
-    public function exists($remote)
-    {
-        throw new BadMethodCallException('File existence check (exists) is not supported in SSH mode.');
-    }
-
-    public function rename($remote, $newRemote)
-    {
-        throw new BadMethodCallException('File renaming (rename) is not supported in SSH mode.');
-    }
-
-    public function delete($remote)
-    {
-        throw new BadMethodCallException('File deletion (delete) is not supported in SSH mode.');
     }
 }

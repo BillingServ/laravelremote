@@ -59,7 +59,7 @@ class SecLibGateway implements GatewayInterface
      * @param string                            $host
      * @param array                             $auth
      * @param \Illuminate\Filesystem\Filesystem $files
-     * @param                                   $timeout
+     * @param int                               $timeout
      */
     public function __construct($host, array $auth, Filesystem $files, $timeout)
     {
@@ -98,11 +98,13 @@ class SecLibGateway implements GatewayInterface
      *
      * @param string $username
      *
-     * @return bool
+     * @return void
      */
     public function connect($username)
     {
-        return $this->getConnection()->login($username, $this->getAuthForLogin());
+        if (!$this->getConnection()->login($username, $this->getAuthForLogin())) {
+            throw new \RuntimeException('SSH login failed.');
+        }
     }
 
     /**
@@ -124,7 +126,7 @@ class SecLibGateway implements GatewayInterface
      *
      * @throws \InvalidArgumentException
      *
-     * @return \Crypt_RSA|\System_SSH_Agent|string
+     * @return \phpseclib\Crypt\RSA|\phpseclib\System\SSH\Agent|string
      */
     protected function getAuthForLogin()
     {
@@ -175,12 +177,11 @@ class SecLibGateway implements GatewayInterface
      *
      * @param array $auth
      *
-     * @return \Crypt_RSA
+     * @return \phpseclib\Crypt\RSA
      */
     protected function loadRsaKey(array $auth)
     {
         with($key = $this->getKey($auth))->loadKey($this->readRsaKey($auth));
-
         return $key;
     }
 
@@ -189,12 +190,11 @@ class SecLibGateway implements GatewayInterface
      *
      * @param array $auth
      *
-     * @return \Crypt_RSA
+     * @return \phpseclib\Crypt\RSA
      */
     protected function getKey(array $auth)
     {
         with($key = $this->getNewKey())->setPassword(Arr::get($auth, 'keyphrase'));
-
         return $key;
     }
 
@@ -220,34 +220,7 @@ class SecLibGateway implements GatewayInterface
         if (isset($auth['key'])) {
             return $this->files->get($auth['key']);
         }
-
         return $auth['keytext'];
-    }
-
-    /**
-     * Get timeout.
-     *
-     * @return int
-     */
-    public function getTimeout()
-    {
-        return $this->timeout;
-    }
-
-    /**
-     * Set timeout.
-     *
-     * Setting $timeout to false or 0 will mean there is no timeout.
-     *
-     * @param int $timeout
-     */
-    public function setTimeout($timeout)
-    {
-        $this->timeout = (int) $timeout;
-
-        if ($this->connection) {
-            $this->connection->setTimeout($this->timeout);
-        }
     }
 
     /**
@@ -280,7 +253,6 @@ class SecLibGateway implements GatewayInterface
     public function nextLine()
     {
         $value = $this->getConnection()->_get_channel_packet(SSH2::CHANNEL_EXEC);
-
         return $value === true ? null : $value;
     }
 
@@ -295,22 +267,117 @@ class SecLibGateway implements GatewayInterface
     }
 
     /**
-     * Get the host used by the gateway.
+     * Set the timeout for commands.
      *
-     * @return string
+     * @param int $timeout
+     *
+     * @return void
      */
-    public function getHost()
+    public function setTimeout($timeout)
     {
-        return $this->host;
+        $this->timeout = (int) $timeout;
+        if ($this->connection) {
+            $this->connection->setTimeout($this->timeout);
+        }
     }
 
     /**
-     * Get the port used by the gateway.
-     *
-     * @return int
+     * The following file transfer methods are implemented solely to satisfy the GatewayInterface.
+     * They are not supported when SFTP functionality is removed.
      */
-    public function getPort()
+
+    /**
+     * Download the contents of a remote file.
+     *
+     * @param string $remote
+     * @param string $local
+     *
+     * @return void
+     * @throws \BadMethodCallException
+     */
+    public function get($remote, $local)
     {
-        return $this->port;
+        throw new \BadMethodCallException("Method get is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Get the contents of a remote file.
+     *
+     * @param string $remote
+     *
+     * @return string
+     * @throws \BadMethodCallException
+     */
+    public function getString($remote)
+    {
+        throw new \BadMethodCallException("Method getString is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Upload a local file to the server.
+     *
+     * @param string $local
+     * @param string $remote
+     *
+     * @return void
+     * @throws \BadMethodCallException
+     */
+    public function put($local, $remote)
+    {
+        throw new \BadMethodCallException("Method put is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Upload a string to the given file on the server.
+     *
+     * @param string $remote
+     * @param string $contents
+     *
+     * @return void
+     * @throws \BadMethodCallException
+     */
+    public function putString($remote, $contents)
+    {
+        throw new \BadMethodCallException("Method putString is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Check whether a given file exists on the server.
+     *
+     * @param string $remote
+     *
+     * @return bool
+     * @throws \BadMethodCallException
+     */
+    public function exists($remote)
+    {
+        throw new \BadMethodCallException("Method exists is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Rename a remote file.
+     *
+     * @param string $remote
+     * @param string $newRemote
+     *
+     * @return bool
+     * @throws \BadMethodCallException
+     */
+    public function rename($remote, $newRemote)
+    {
+        throw new \BadMethodCallException("Method rename is not supported without SFTP functionality.");
+    }
+
+    /**
+     * Delete a remote file from the server.
+     *
+     * @param string $remote
+     *
+     * @return bool
+     * @throws \BadMethodCallException
+     */
+    public function delete($remote)
+    {
+        throw new \BadMethodCallException("Method delete is not supported without SFTP functionality.");
     }
 }

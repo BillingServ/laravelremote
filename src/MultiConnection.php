@@ -46,7 +46,7 @@ class MultiConnection implements ConnectionInterface
      *
      * @return void
      */
-    public function task($task, Closure $callback = null)
+    public function task($task, ?Closure $callback = null)
     {
         foreach ($this->connections as $connection) {
             $connection->task($task, $callback);
@@ -61,7 +61,7 @@ class MultiConnection implements ConnectionInterface
      *
      * @return void
      */
-    public function run($commands, Closure $callback = null)
+    public function run($commands, ?Closure $callback = null)
     {
         foreach ($this->connections as $connection) {
             $connection->run($commands, $callback);

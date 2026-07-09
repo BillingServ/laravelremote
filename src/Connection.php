@@ -61,7 +61,7 @@ class Connection implements ConnectionInterface
      * @param \Collective\Remote\GatewayInterface $gateway
      * @param int                                 $timeout
      */
-    public function __construct($name, $host, $username, array $auth, GatewayInterface $gateway = null, $timeout = 10)
+    public function __construct($name, $host, $username, array $auth, ?GatewayInterface $gateway = null, $timeout = 10)
     {
         $this->name = $name;
         $this->host = $host;
@@ -92,7 +92,7 @@ class Connection implements ConnectionInterface
      *
      * @return void
      */
-    public function task($task, Closure $callback = null)
+    public function task($task, ?Closure $callback = null)
     {
         if (isset($this->tasks[$task])) {
             $this->run($this->tasks[$task], $callback);
@@ -108,7 +108,7 @@ class Connection implements ConnectionInterface
      * @param int|null $timeout
      * @return void
      */
-    public function run($commands, Closure $callback = null, int $timeout = null)
+    public function run($commands, ?Closure $callback = null, ?int $timeout = null)
     {
         // First, we will initialize the SSH gateway, and then format the commands so
         // they can be run. Once we have the commands formatted and the server is
